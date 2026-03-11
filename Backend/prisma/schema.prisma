@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model customer {
+  id          Int      @id @default(autoincrement())
+  name        String
+  phoneNumber String
+  address     String?
+  shopId      Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  shop        shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  bills    Bill[]
+  @@unique([phoneNumber, shopId]) 
+
+  @@index([shopId], map: "customer_shopId_fkey")
+}
+
+model City{
+  id       Int    @id @default(autoincrement())
+  name     String @db.VarChar(30)
+  stateId Int @map("state_id")
+  states   State @relation(fields: [stateId],references: [id],onDelete: Cascade)
+  shop shop[]
+  @@map("cities")
+}
+
+model Country {
+  id        Int    @id @default(autoincrement())
+  sortname  String @db.VarChar(3)
+  name      String @db.VarChar(150)
+  phonecode Int
+  states State[]
+   shop shop[]
+  @@map("countries")
+}
+
+// model role {
+//   id        Int      @id @default(autoincrement())
+//   name      String   @unique(map: "Role_name_key")
+//   createdAt DateTime @default(now())
+//   updateAt  DateTime
+//   user      user[]   @relation("roletouser")
+// }
+
+model shop {
+  id        Int        @id @default(autoincrement())
+  ownerName String
+  shopName  String
+  mobile    String?
+  email     String?
+  CountryId  Int
+  GstNumber String?
+  stateId  Int
+  cityId   Int?
+  Pincode   Int
+  Address   String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime @updatedAt
+  customer  customer[]
+  user      user[]
+  cities City?  @relation(fields: [cityId],references: [id])
+  states State @relation(fields: [stateId],references: [id])
+  countries Country @relation(fields: [CountryId],references: [id])
+  products  Product[]
+   bills     Bill[]
+}
+
+model State {
+  id         Int    @id @default(autoincrement())
+  name       String @db.VarChar(30)
+  CountryId Int    @map("country_id")
+  cities City[]
+  countries Country @relation(fields: [CountryId],references: [id],onDelete: Cascade)
+   shop shop[]
+  @@map("states")
+}
+
+enum Role {
+  ADMIN
+  SHOPKEEPER
+}
+
+model user {
+  id       Int     @id @default(autoincrement())
+  name     String
+  email    String  @unique(map: "User_email_key")
+  password String
+  isActive Boolean @default(true)
+  shopId   Int?
+  role     Role @default(SHOPKEEPER)
+  shop     shop?   @relation(fields: [shopId], references: [id], onDelete: Cascade, map: "User_shopId_fkey")
+  // role     role[]  @relation("roletouser")
+  bills   Bill[]
+  @@index([shopId], map: "User_shopId_fkey")
+}
+
+model Product{
+  id  Int   @id @default(autoincrement())
+  name   String
+  barcode  String 
+  colour   String?
+  stock    Int
+  price   Float
+  shopId    Int
+
+  shop     shop   @relation(fields: [shopId],references: [id])
+  createdAt  DateTime  @default(now())
+  items           BillItem[]
+
+  @@unique([barcode, shopId]) 
+  @@index([barcode,shopId])
+}
+
+model Bill {
+  id            Int      @id @default(autoincrement())
+  invoiceNumber String   
+  
+  
+  shopId        Int
+  shop          shop     @relation(fields: [shopId], references: [id])
+  
+  customerId    Int? 
+  userId        Int      
+  User            user   @relation(fields: [userId],references: [id])
+  taxAmount    Float
+  discount     Float?
+  paymentMethod  String
+  totalAmount     Float
+  status    String @default("PAID")
+
+  customer      customer? @relation(fields: [customerId], references: [id])
+  items           BillItem[]
+  
+  createdAt     DateTime @default(now())
+  @@unique([invoiceNumber, shopId])
+  
+}
+
+model BillItem {
+  id  Int   @id @default(autoincrement())
+  billId  Int 
+  bill   Bill  @relation(fields: [billId],references: [id])
+  productId Int
+  product  Product @relation(fields: [productId],references: [id])
+  quantity   Int
+  price    Float
+  total    Float
+
+}
